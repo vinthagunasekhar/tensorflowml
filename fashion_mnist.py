@@ -28,6 +28,7 @@ model.compile(optimizer='adam',
 model.fit(training_images, training_labels, epochs=45, callbacks=[callbacks])
 model.evaluate(test_images, test_labels)
 
+
 classifications = model.predict(test_images)
 print(classifications[3])
 print(test_labels[3])
