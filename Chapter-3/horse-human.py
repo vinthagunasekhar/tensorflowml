@@ -2,14 +2,18 @@ import urllib.request
 import zipfile
 
 url="https://storage.googleapis.com/learning-datasets/horse-or-human.zip"
-
+validation_url="https://storage.googleapis.com/learning-datasets/validation-horse-or-human.zip"
 file_name="horse-or-human.zip"
-
+validation_file_name="validation-horse-or-human.zip"
+validation_dir='horse-or-huma/validation/'
 training_dir='horse-or-human/training/'
 urllib.request.urlretrieve(url,file_name)
-
+urllib.request.urlretrieve(validation_url,validation_file_name)
 zip_ref= zipfile.ZipFile(file_name, 'r')
 zip_ref.extractall(training_dir)
+zip_ref.close()
+zip_ref= zipfile.ZipFile(validation_file_name, 'r')
+zip_ref.extractall(validation_dir)
 zip_ref.close()
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
@@ -19,6 +23,13 @@ train_datagen= ImageDataGenerator(rescale=1/255)
 
 train_generator= train_datagen.flow_from_directory(
     training_dir,
+    target_size=(300,300),
+    class_mode='binary'
+)
+
+validation_datagen= ImageDataGenerator(rescale=1/255)
+validation_generator= train_datagen.flow_from_directory(
+    validation_dir,
     target_size=(300,300),
     class_mode='binary'
 )
@@ -43,3 +54,5 @@ model.compile(loss='binary_crossentropy',
               optimizer= RMSprop(learning_rate=0.001),
               metrics=['accuracy'])
 history=model.fit_generator(train_generator, epochs=15)
+
+history=model.fit_generator(train_generator, epochs=15, validation_data=validation_generator)
