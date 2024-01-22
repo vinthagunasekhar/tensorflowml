@@ -17,6 +17,9 @@ zip_ref.extractall(validation_dir)
 zip_ref.close()
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras import layers
+from tensorflow.keras import Model
+from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.optimizers.legacy import RMSprop
 
 train_datagen= ImageDataGenerator(rescale=1/255)
@@ -34,25 +37,28 @@ validation_generator= train_datagen.flow_from_directory(
     class_mode='binary'
 )
 
-model= tf.keras.models.Sequential([
-    tf.keras.layers.Conv2D(16,(3,3), activation='relu',input_shape=(300,300,3)),
-    tf.keras.layers.MaxPooling2D(2,2),
-    tf.keras.layers.Conv2D(32,(3,3), activation='relu'),
-    tf.keras.layers.MaxPooling2D(2,2),
-    tf.keras.layers.Conv2D(64,(3,3), activation='relu'),
-    tf.keras.layers.MaxPooling2D(2,2),
-    tf.keras.layers.Conv2D(64,(3,3), activation='relu'),
-    tf.keras.layers.MaxPooling2D(2,2),
-    tf.keras.layers.Conv2D(64,(3,3), activation='relu'),
-    tf.keras.layers.MaxPooling2D(2,2),
-    tf.keras.layers.Flatten(),
-    tf.keras.layers.Dense(512, activation='relu'),
-    tf.keras.layers.Dense(1, activation='sigmoid')
-])
+weights_url="https://storage.googleapis.com/mledu-datasets/inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5"
+weights_file="inception_v3.h5"
+urllib.request.urlretrieve(weights_url,weights_file)
+
+pre_trained_model= InceptionV3(input_shape=(150, 150, 3), include_top=False, weights= None)
+
+pre_trained_model.load_weights(weights_file)
+
+for layer in pre_trained_model.layers:
+    layer.trainable= False
+
+last_layer= pre_trained_model.get_layer('mixed7')
+last_output= last_layer.output
+
+x=layers.Flatten()(last_output)
+x=layers.Dense(1024, activation='relu')(x)
+x=layers.Dense(1, activation='sigmoid')(x)
+model= Model(pre_trained_model.input, x)
 
 model.compile(loss='binary_crossentropy',
               optimizer= RMSprop(learning_rate=0.001),
-              metrics=['accuracy'])
+              metrics=['acc'])
 history=model.fit_generator(train_generator, epochs=15)
 
 history=model.fit_generator(train_generator, epochs=15, validation_data=validation_generator)
